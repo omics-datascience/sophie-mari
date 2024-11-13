@@ -10,3 +10,9 @@ This project replicates and extends the study presented in **"[Predicting Tumor 
 - Recommended hardware: CPU or GPU if large datasets are used
 - Recommended OS: Ubuntu, MacOS, or Windows
 
+## Set up environment
+   - Clone this repository and navigate to the project directory.
+   - Install dependencies using:
+     ```bash
+     pip install -r requirements.txt
+     ```
