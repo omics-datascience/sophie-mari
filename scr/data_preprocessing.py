@@ -21,7 +21,7 @@ else:
 ccle_data = pd.read_csv(ccle_path, compression='gzip', sep='\t', comment='#')
 
 # Print the head of the dataset
-print(ccle_data.head())
+print("CCLE data head:", ccle_data.head())
 
 # transform ENSENBL IDs into official gene symbols
 
@@ -31,15 +31,15 @@ print(ccle_data.head())
 gencode_path = os.path.join(folder, "gencode.v19.annotation.gtf.gz")
 
 if not os.path.exists(gencode_path):
-    print("File not found. Please check the file path.")
+    print("Gencode file not found. Please check the file path.")
 else:
-    print("File exists.")
+    print("Gencode file exists.")
 
 # Read the gzipped file
 gencode_data = pd.read_csv(gencode_path, compression='gzip', sep='\t', comment='#')
 
 # Print the head of the dataset
-print(gencode_data.head(10))
+print("Gencode data head:", gencode_data.head(10))
 
 # transform ENSENBL IDs into official gene symbols
 
@@ -77,7 +77,7 @@ ccle_data['gene_id'] = ccle_data['gene_id'].map(gene_mapping)
 
 
 # Display the first few rows of the transformed DataFrame
-print(ccle_data.head())
+print("Transformed CCLE data", ccle_data.head())
 
 # Average duplicates 
 
@@ -194,10 +194,10 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
 
 
 # Specify a DRUG_ID
-drug_id = 3
+drug_id = 1
 
 # Call the function with the specified drug ID
-gene_expression_matrix, ic50_vector = create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data)
+gene_expression_matrix, ic50_vector = create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, averaged_data)
 
 # Check the output
 if gene_expression_matrix is not None:
