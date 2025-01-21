@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[3]:
-
-
 # read CCLE
 
 import pandas as pd
@@ -29,10 +23,6 @@ ccle_data = pd.read_csv(ccle_path, compression='gzip', sep='\t', comment='#')
 # Print the head of the dataset
 print(ccle_data.head())
 
-
-# In[4]:
-
-
 # transform ENSENBL IDs into official gene symbols
 
 # read gene annotation
@@ -50,11 +40,6 @@ gencode_data = pd.read_csv(gencode_path, compression='gzip', sep='\t', comment='
 
 # Print the head of the dataset
 print(gencode_data.head(10))
-
-
-# In[5]:
-
-
 
 # transform ENSENBL IDs into official gene symbols
 
@@ -87,21 +72,12 @@ for i, (key, value) in enumerate(gene_mapping.items()):
     print(f"{key}: {value}")
     if i == 9:  # Stop after printing 10 items
         break
-
-
-# In[7]:
-
-
 # Replace gene IDs with gene names using the mapping dictionary
 ccle_data['gene_id'] = ccle_data['gene_id'].map(gene_mapping)
 
 
 # Display the first few rows of the transformed DataFrame
 print(ccle_data.head())
-
-
-# In[8]:
-
 
 # Average duplicates 
 
@@ -111,11 +87,6 @@ averaged_data = ccle_data.groupby('gene_id', as_index=False).mean()
 
 # Display the first few rows of the resulting DataFrame
 print(averaged_data.head())
-
-
-# In[10]:
-
-
 
 # read GDSC 1
 
@@ -132,10 +103,6 @@ gdsc1_data = pd.read_excel(gdsc1_path)
 # Print the head of the dataset
 print(gdsc1_data.head(10))
 
-
-# In[11]:
-
-
 # read GDSC 2
 
 # File path
@@ -151,10 +118,6 @@ gdsc2_data = pd.read_excel(gdsc2_path)
 # Print the head of the dataset
 print(gdsc2_data.head(10))
 
-
-# In[12]:
-
-
 # Ensure both files have the same column names (if needed)
 assert list(gdsc1_data.columns) == list(gdsc2_data.columns), "Column names must match!"
 
@@ -168,19 +131,11 @@ combined_gdsc_df = pd.concat([gdsc1_filtered, gdsc2_data], ignore_index=True)
 # Display the result
 print(combined_gdsc_df.head())
 
-
-# In[13]:
-
-
 # Check the shape of the combined DataFrame
 num_rows, num_columns = combined_gdsc_df.shape
 
 print(f"Number of rows: {num_rows}")
 print(f"Number of columns: {num_columns}")
-
-
-# In[14]:
-
 
 # create data matrix and IC50 vector for each drug
 
@@ -239,7 +194,7 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
 
 
 # Specify a DRUG_ID
-drug_id = 1
+drug_id = 3
 
 # Call the function with the specified drug ID
 gene_expression_matrix, ic50_vector = create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data)
@@ -249,7 +204,6 @@ if gene_expression_matrix is not None:
     print(f"Gene Expression Matrix for DRUG_ID {drug_id}:")
     print(gene_expression_matrix.head())
     print("\nIC50 Vector:")
-    print(ic50_vector[:5])  # Print the first 5 values
+    print(ic50_vector[:10])  # Print the first 5 values
 else:
     print(f"No data available for DRUG_ID {drug_id}.")
-
