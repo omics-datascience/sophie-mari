@@ -1,3 +1,4 @@
+from itertools import product
 from typing import cast, Union, Final
 
 import numpy as np
@@ -11,7 +12,7 @@ from sklearn.neighbors import KNeighborsRegressor
 FSResult = tuple[list[str] | None, KNeighborsRegressor | None, float | None]
 
 # Debug flag
-DEBUG: Final[bool] = True
+DEBUG: Final[bool] = False
 
 # MSE need to be minimized
 MORE_IS_BETTER = False
@@ -169,10 +170,24 @@ def genetic_algorithms(
 
 if __name__ == '__main__':
     # Reads data from CSV file (last row is the target)
+    print('Reading data')
     x_data = pd.read_csv('./gene_expression_and_ic50.csv', index_col=0)
     y_data = x_data.iloc[-1].values
     x_data = x_data.iloc[:-1]
 
+    # Reports original MSE with all the features
+    print('Running fitness function with all the features')
+    original_mse_mean = __compute_cross_validation(
+        classifier=KNeighborsRegressor(),
+        subset=x_data,
+        y=y_data,
+        cross_validation_folds=5,
+        more_is_better=MORE_IS_BETTER
+    )[0]
+    print(f'Started with {x_data.shape[0]} features. Original MSE: {original_mse_mean}')
+
+    # Run genetic algorithms to find the best features
+    print('Running Genetic Algorithms')
     result = genetic_algorithms(
         classifier=KNeighborsRegressor(),
         molecules_df=x_data,
@@ -183,14 +198,58 @@ if __name__ == '__main__':
         cross_validation_folds=5,
         more_is_better=MORE_IS_BETTER
     )
+    print(f'Best features: {len(result[0])} | Best MSE: {result[2]} | Best model instance: {result[1]}')
 
-    if DEBUG:
-        original_mse_mean = __compute_cross_validation(
+    # Grid search to find the best parameters
+    print('\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n')
+    print('Starting Grid Search')
+    param_grid = {
+        'population_size': [10, 20, 50],
+        'mutation_rate': [0.05, 0.1, 0.2],
+        'n_iterations': [10, 20, 50],
+    }
+
+    best_result = None
+    best_params = None
+    best_score = float('inf') if not MORE_IS_BETTER else float('-inf')
+
+    # Perform grid search
+    for current_population_size, current_mutation_rate, current_n_iterations in product(
+        param_grid['population_size'],
+        param_grid['mutation_rate'],
+        param_grid['n_iterations']
+    ):
+        print(f"Testing parameters: population_size={current_population_size}, "
+              f"mutation_rate={current_mutation_rate}, n_iterations={current_n_iterations}")
+
+        # Run the genetic algorithm with the current set of parameters
+        result = genetic_algorithms(
             classifier=KNeighborsRegressor(),
-            subset=x_data,
+            molecules_df=x_data,
+            population_size=current_population_size,
+            mutation_rate=current_mutation_rate,
+            n_iterations=current_n_iterations,
             y=y_data,
             cross_validation_folds=5,
             more_is_better=MORE_IS_BETTER
-        )[0]
-        print(f'Started with {x_data.shape[0]} features. Original MSE: {original_mse_mean}')
-        print(f'Best features: {len(result[0])} | Best MSE: {result[2]} | Best model instance: {result[1]}')
+        )
+
+        # Extract the score (mean squared error)
+        _, _, mean_score = result
+
+        print(f'Features: {len(result[0])} | MSE: {mean_score}')
+
+        # Update the best parameters and result if the current score is better
+        if (MORE_IS_BETTER and mean_score > best_score) or (not MORE_IS_BETTER and mean_score < best_score):
+            best_score = mean_score
+            best_params = {
+                'population_size': current_population_size,
+                'mutation_rate': current_mutation_rate,
+                'n_iterations': current_n_iterations
+            }
+            best_result = result
+
+    # Output the best parameters and results
+    print("\nGrid Search Complete")
+    print(f"Best Parameters: {best_params}")
+    print(f"Best Features: {len(best_result[0])} | Best MSE: {best_result[2]} | Best Model: {best_result[1]}")
