@@ -224,7 +224,7 @@ if __name__ == '__main__':
 
         # Run the genetic algorithm with the current set of parameters
         result = genetic_algorithms(
-            classifier=KNeighborsRegressor(),
+            classifier=KNeighborsRegressor(),  # NOTE: you can add some hiper-parameters here in the GridSearch
             molecules_df=x_data,
             population_size=current_population_size,
             mutation_rate=current_mutation_rate,
