@@ -61,9 +61,6 @@ def parse_attributes(attributes):
 mapping = gtf_data['attributes'].apply(parse_attributes)
 gene_mapping_df = pd.DataFrame(mapping.tolist(), columns=['gene_id', 'gene_name'])
 
-# Drop duplicates to ensure unique mapping
-gene_mapping_df = gene_mapping_df.drop_duplicates()
-
 # Create a dictionary for mapping
 gene_mapping = dict(zip(gene_mapping_df['gene_id'], gene_mapping_df['gene_name']))
 
@@ -83,7 +80,7 @@ print("Transformed CCLE data", ccle_data.head())
 
 # Group by the 'gene_id' column (now containing gene names)
 # and calculate the mean for all other columns
-averaged_data = ccle_data.groupby('gene_id', as_index=False).mean()
+averaged_data = ccle_data.groupby('gene_id', as_index=False).mean(numeric_only=True)
 
 # Display the first few rows of the resulting DataFrame
 print(averaged_data.head())
@@ -137,6 +134,7 @@ num_rows, num_columns = combined_gdsc_df.shape
 print(f"Number of rows: {num_rows}")
 print(f"Number of columns: {num_columns}")
 
+
 # create data matrix and IC50 vector for each drug
 
 def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
@@ -159,9 +157,6 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
     # Filter rows for the given DRUG_ID
     drug_data = combined_gdsc_df[combined_gdsc_df['DRUG_ID'] == drug_id]
 
-    # Remove duplicate CELL_LINE_NAME entries for this drug
-    drug_data = drug_data.groupby('CELL_LINE_NAME', as_index=False).mean()
-
     # Initialize lists to store matrix columns and IC50 values
     gene_expression_matrix = []
     ic50_vector = []
@@ -176,7 +171,7 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
             gene_expression_matrix.append(ccle_data[ccle_column_name].values)
 
             # Append IC50 value for this cell line
-            ic50_value = drug_data[drug_data['CELL_LINE_NAME'] == cell_line]['LN_IC50'].values[0]
+            ic50_value = float(drug_data[drug_data['CELL_LINE_NAME'] == cell_line]['LN_IC50'].values[0])
             ic50_vector.append(ic50_value)
             matching_cell_lines.append(cell_line)
 
@@ -192,6 +187,24 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
     return gene_expression_matrix, ic50_vector
 
 
+# Get all unique drug IDs
+unique_drug_ids = combined_gdsc_df['DRUG_ID'].unique()
+print(unique_drug_ids[:10]) #first 10 unique drug IDs
+
+# Count the number of unique drug IDs
+num_unique_drugs = combined_gdsc_df['DRUG_ID'].nunique()
+print(f"Number of unique DRUG_IDs: {num_unique_drugs}")
+
+# Count the occurrences of each DRUG_ID
+drug_id_counts = combined_gdsc_df['DRUG_ID'].value_counts()
+
+# Find the drug IDs with the maximum and minimum counts
+max_drug_id, max_count = drug_id_counts.idxmax(), drug_id_counts.max()
+min_drug_id, min_count = drug_id_counts.idxmin(), drug_id_counts.min()
+
+print(f"Drug ID with the maximum count: {max_drug_id}, Count: {max_count}")
+print(f"Drug ID with the minimum count: {min_drug_id}, Count: {min_count}")
+
 
 # Specify a DRUG_ID
 drug_id = 1
@@ -204,6 +217,24 @@ if gene_expression_matrix is not None:
     print(f"Gene Expression Matrix for DRUG_ID {drug_id}:")
     print(gene_expression_matrix.head())
     print("\nIC50 Vector:")
-    print(ic50_vector[:10])  # Print the first 5 values
+    print(ic50_vector[:10])  # Print the first 10 values
 else:
     print(f"No data available for DRUG_ID {drug_id}.")
+
+print(f"Number of cell lines in gene_expression_matrix: {gene_expression_matrix.shape[1]}")
+print(f"Length of ic50_vector: {len(ic50_vector)}")
+
+#Exporting Drug 1 to .csv
+
+# Create a DataFrame for the IC50 row with the same columns as the gene expression data
+ic50_row = pd.Series(ic50_vector, index=gene_expression_matrix.columns)
+
+# Insert IC50 row at the top of the DataFrame
+gene_expression_matrix.loc['IC50'] = ic50_row  # Adding IC50 row
+
+# Export to CSV (with IC50 as the first row)
+gene_expression_matrix.to_csv('gene_expression_and_ic50.csv', index=True, header=True)
+
+# Export to JSON (with IC50 as the first row)
+gene_expression_matrix.to_json('gene_expression_and_ic50.json', orient='records', lines=True)
+
