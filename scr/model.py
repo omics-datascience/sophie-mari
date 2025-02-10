@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 import pickle
 from feature_selection import run_ga
-from data_preprocessing import create_matrix_and_ic50_for_drug, combined_gdsc, ccle_data
+from OG_data_preprocessing import create_matrix_and_ic50_for_drug, combined_gdsc, ccle_data
 
 
 # Train KNN model with selected features using Monte Carlo Cross-Validation
