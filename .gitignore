@@ -1,12 +1,14 @@
 .idea/
+.DS_Store
 
-# Ignore datasets in datasets
+# Ignore datasets in datasets folder
 GDSC1_fitted_dose_response_27Oct23.xlsx
 GDSC2_fitted_dose_response_27Oct23.xlsx
 GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct.gz
 CCLE_RNAseq_rsem_genes_tpm_20180929.txt.gz
 EBPlusPlusAdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.tsv 
-.DS_Store
+gencode.v19.annotation.gtf.gz
 
-# Ignore datasets_OG folder
-datasets_OG/
+# Ignore datasets in datasets_OG folder
+GDSC1_fitted_dose_response_17Jul19.csv
+GDSC2_fitted_dose_response_15Oct19.csv
