@@ -3,7 +3,7 @@
 import pandas as pd
 import os
 import gzip
-
+import numpy as np
 
 # CCLE has the gene expression
 
@@ -174,6 +174,8 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
             ic50_value = float(drug_data[drug_data['CELL_LINE_NAME'] == cell_line]['LN_IC50'].values[0])
             ic50_vector.append(ic50_value)
             matching_cell_lines.append(cell_line)
+
+    ic50_vector = np.array(ic50_vector)
 
     # If no matching cell lines, return None
     if not gene_expression_matrix:
