@@ -22,6 +22,8 @@ DEBUG: Final[bool] = False
 # MSE needs to be minimized
 MORE_IS_BETTER = False
 
+x_data = pd.read_csv('./gene_expression_and_ic50.csv', index_col=0).T.dropna()
+
 
 def __compute_cross_validation(classifier: KNeighborsRegressor, subset: pd.DataFrame, y: np.ndarray) -> float:
     """

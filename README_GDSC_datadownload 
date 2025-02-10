@@ -1,0 +1,89 @@
+          Welcome to the Wellcome Sanger Institute anonymous FTP site.
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Connecting to and downloading data from the FTP site
+   ----------------------------------------------------
+
+   Due to security concerns about the FTP protocol, all the major browser
+   providers have dropped support for FTP (current browser versions of:
+   Firefox; Chrome; Edge; and Safari).
+
+   The biggest security risk is that FTP transfers data unencrypted, allowing
+   attackers to steal, spoof and modify the data being transmitted.
+
+   Thus we recommend three options to Users wishing to navigate and download data
+   from our FTP site.
+
+   - Use your web browser over https - https://ftp.sanger.ac.uk
+   - Use the FileZilla Client - https://filezilla-project.org/
+   - Use a Command line tool Linux, Mac and Windows all have these
+
+   Sanger data
+   -----------
+   Users of the material provided here in advance of submission to
+   public databases should read the Wellcome Sanger Institute's Data sharing
+   policy and Guidelines on the use of data in publications:
+   
+   These documents are available on the Wellcome Sanger Institute web-site
+   at the following URLs:
+
+      ftp://ftp.sanger.ac.uk/pub/00-README.data-sharing-policy.txt
+      ftp://ftp.sanger.ac.uk/pub/00-README.use-of-data-in-publications.txt
+
+   Please report any unusual problems you may have with this server
+   via e-mail to ftpadmin@sanger.ac.uk
+   
+   Problems? Try using a dash (-) as the first character of your password 
+   to turn off continuation messages that may confuse your ftp client.
+
+   This ftp server can do dynamic compression and tar :
+   
+   Real Filename  'get' Filename      This server will 
+   -------------  ------------------  -----------------------------------
+   <filename>.Z   <filename>          Decompress file before transmitting
+   <filename>     <filename>.Z        Compress or <filename> before
+                                               transmitting
+   <filename>     <filename>.tar      Tar <filename> before transmitting
+   <filename>     <filename>.tar.Z    Tar and compress <filename> before
+                                              transmitting
+
+   Use .gz suffix instead of .Z to use gzip
+   Use .tar.gz suffix to create gzip'd tar archives of whole dirs.
+  -----------------------------------------------------------------------
+
+         All connections and transfers are logged.
+
+  Recent changes as of 4th Feb 2014
+  ---------------------------------
+  We are currently restructuring and tidying the ftp filesystem and as 
+  such the pub4, pub3 and pub2 folders will be removed and their contents
+  either archived or relocated over the next few weeks. External urls 
+  to these locations should still function as we are implementing 
+  redirect rules in order to reduce disruption to ftp users. The 
+  redirects currently in place are as follows:
+
+  pub4/pathogens    -> /pub/project/pathogens
+  pub/pathogens     -> /pub/project/pathogens
+  pub4/cancerrxgene -> /pub/project/cancerrxgene
+  pub4/opendoor     -> /pub/resources/opendoor
+  pub4/theses       -> /pub/resources/theses
+  pub4/repli-timing -> /pub/resources/data/repli-timing
+  pub4/resources    -> /pub/resources
+  pub4/humgen       -> /pub/project/humgen
+  pub4/ibdgenetics  -> /pub/consortia/ibdgenetics
+  pub3/sanhgmp      -> /pub/project/badger/sanhgmp
+  pub2/wormbase     -> /pub/consortia/wormbase
+  pub2/rnd          -> /pub/teams/51/rnd
+  pub2/Angler       -> /pub/resources/software/Angler
+  pub2/gff          -> /pub/resources/software/gff-old/gff
+  pub2/C.briggsae   -> /pub/sequences/C.briggsae
+  pub/C.briggsae    -> /pub/sequences/C.briggsae
+  pub2/yeast        -> /pub/project/yeast
+  pub/yeast         -> /pub/project/yeast
+  pub2/acedb        -> /pub/project/acedb
+  pub/acedb         -> /pub/project/acedb
+  pub2/PomBase      -> /pub/project/PomBase
+  pub/PomBase       -> /pub/project/PomBase
+  pub2/psg_support  -> /pub/sequences/psg_support
+  pub/psg_support   -> /pub/sequences/psg_support
+
