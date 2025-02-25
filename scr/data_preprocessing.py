@@ -228,15 +228,12 @@ print(f"Length of ic50_vector: {len(ic50_vector)}")
 
 #Exporting Drug 1 to .csv
 
-# Create a DataFrame for the IC50 row with the same columns as the gene expression data
-ic50_row = pd.Series(ic50_vector, index=gene_expression_matrix.columns)
+# Export matrix to CSV 
+gene_expression_matrix.to_csv('gene_expression_drug1.csv', index=True, header=True)
 
-# Insert IC50 row at the top of the DataFrame
-gene_expression_matrix.loc['IC50'] = ic50_row  # Adding IC50 row
+# Convert to Pandas Series
+ic50_series = pd.Series(ic50_vector)
 
-# Export to CSV (with IC50 as the first row)
-gene_expression_matrix.to_csv('gene_expression_and_ic50.csv', index=True, header=True)
-
-# Export to JSON (with IC50 as the first row)
-gene_expression_matrix.to_json('gene_expression_and_ic50.json', orient='records', lines=True)
+# Save as csv
+ic50_series.to_csv('ic50_drug1.csv', index=True, header=True)
 
