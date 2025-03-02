@@ -225,17 +225,69 @@ else:
 print(f"Number of cell lines in gene_expression_matrix: {gene_expression_matrix.shape[1]}")
 print(f"Length of ic50_vector: {len(ic50_vector)}")
 
+# Export all gene expression matrices and IC50 vectors
+# Define the list of drug IDs
+drug_ids = [
+    1, 3, 5, 6, 9, 11, 17, 29, 30, 32, 34, 35, 37, 38, 41, 45, 51, 52, 53, 54, 55, 
+    56, 59, 60, 62, 63, 64, 71, 83, 86, 87, 88, 89, 91, 94, 104, 106, 110, 111, 119, 
+    127, 133, 134, 135, 136, 140, 147, 150, 151, 152, 153, 154, 155, 156, 157, 158, 
+    159, 163, 164, 165, 166, 167, 170, 171, 172, 173, 175, 176, 177, 178, 179, 180, 
+    182, 184, 185, 186, 190, 192, 193, 194, 196, 197, 199, 200, 201, 202, 203, 204, 
+    205, 206, 207, 208, 211, 219, 221, 222, 223, 224, 225, 226, 228, 229, 230, 231, 
+    235, 236, 238, 245, 249, 252, 253, 254, 255, 256, 257, 258, 260, 261, 262, 263, 
+    264, 265, 266, 268, 269, 271, 272, 273, 274, 275, 276, 277, 279, 281, 282, 283, 
+    284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 298, 299, 300, 301, 
+    302, 303, 304, 305, 306, 308, 309, 310, 312, 317, 326, 328, 329, 330, 331, 332, 
+    333, 341, 342, 344, 345, 346, 356, 362, 363, 366, 371, 372, 374, 375, 376, 380, 
+    381, 382, 406, 407, 408, 409, 410, 412, 415, 416, 427, 428, 431, 432, 435, 436, 
+    437, 438, 439, 442, 446, 447, 449, 461, 474, 476, 477, 478, 546, 552, 562, 563, 
+    573, 574, 576, 1001, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 
+    1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025, 1026, 
+    1028, 1029, 1030, 1031, 1032, 1033, 1036, 1037, 1038, 1039, 1042, 1043, 1046, 
+    1047, 1048, 1049, 1050, 1052, 1053, 1054, 1057, 1058, 1059, 1060, 1061, 1062, 
+    1066, 1067, 1069, 1072, 1091, 1114, 1129, 1133, 1142, 1143, 1149, 1158, 1161, 
+    1164, 1166, 1170, 1175, 1192, 1194, 1199, 1203, 1218, 1219, 1230, 1236, 1239, 
+    1241, 1242, 1243, 1248, 1259, 1261, 1262, 1263, 1264, 1266, 1268, 1371, 1372, 
+    1373, 1375, 1377, 1378, 1494, 1495, 1498, 1502, 1526, 1527, 1529, 1530, 1003, 
+    1051, 1068, 1073, 1079, 1080, 1083, 1084, 1085, 1086, 1088, 1089, 1093, 1096, 
+    1131, 1168, 1177, 1179, 1180, 1190, 1191, 1200, 1237, 1249, 1250, 1507, 1510, 
+    1511, 1512, 1549, 1553, 1557, 1558, 1559, 1560, 1561, 1563, 1564, 1576, 1578, 
+    1593, 1594, 1598, 1613, 1614, 1615, 1617, 1618, 1620, 1621, 1622, 1624, 1625, 
+    1626, 1627, 1629, 1630, 1631, 1632, 1634, 1635, 1786, 1799, 1802, 1804, 1806, 
+    1807, 1808, 1809, 1810, 1811, 1813, 1814, 1816, 1818, 1819, 1825, 1827, 1830, 
+    1835, 1838, 1849, 1852, 1853, 1854, 1855, 1866, 1873, 1908, 1909, 1910, 1911, 
+    1912, 1913, 1915, 1916, 1917, 1918, 1919, 1922, 1924, 1925, 1926, 1927, 1928, 
+    1930, 1931, 1932, 1933, 1936, 1939, 1940, 1941, 1996, 1997, 1998, 2040, 2043, 
+    2044, 2045, 2046, 2047, 2048, 2096, 2106, 2107, 2109, 2110, 2111, 2169, 2170, 
+    2171, 2172
+]
+
+# Create directories if they don’t exist
+os.makedirs("gene_expression_matrices", exist_ok=True)
+os.makedirs("drug_id_vectors", exist_ok=True)
+
+for drug_id in drug_ids:
+    gene_expression_matrix, ic50_vector = create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, averaged_data)
+
+    if gene_expression_matrix is not None:
+        gene_expression_matrix.to_csv(f"gene_expression_matrices/{drug_id}_matrix.csv")
+        pd.Series(ic50_vector).to_csv(f"drug_id_vectors/{drug_id}_vector.csv", index=False)
+
+        print(f"Saved files for DRUG_ID {drug_id}")
+    else:
+        print(f"No data for DRUG_ID {drug_id}")
+
 #Exporting Drug 1 to .csv
 
 # Create a DataFrame for the IC50 row with the same columns as the gene expression data
-ic50_row = pd.Series(ic50_vector, index=gene_expression_matrix.columns)
+#ic50_row = pd.Series(ic50_vector, index=gene_expression_matrix.columns)
 
 # Insert IC50 row at the top of the DataFrame
-gene_expression_matrix.loc['IC50'] = ic50_row  # Adding IC50 row
+#gene_expression_matrix.loc['IC50'] = ic50_row  # Adding IC50 row
 
 # Export to CSV (with IC50 as the first row)
-gene_expression_matrix.to_csv('gene_expression_and_ic50.csv', index=True, header=True)
+#gene_expression_matrix.to_csv('gene_expression_and_ic50.csv', index=True, header=True)
 
 # Export to JSON (with IC50 as the first row)
-gene_expression_matrix.to_json('gene_expression_and_ic50.json', orient='records', lines=True)
+#gene_expression_matrix.to_json('gene_expression_and_ic50.json', orient='records', lines=True)
 

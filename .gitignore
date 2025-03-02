@@ -1,5 +1,7 @@
 .idea/
 .DS_Store
+datasets/
+datasets_OG/
 
 # Ignore datasets in datasets folder
 GDSC1_fitted_dose_response_27Oct23.xlsx
@@ -12,3 +14,7 @@ gencode.v19.annotation.gtf.gz
 # Ignore datasets in datasets_OG folder
 GDSC1_fitted_dose_response_17Jul19.csv
 GDSC2_fitted_dose_response_15Oct19.csv
+
+# Ignore drug id vectors and gene expression matrices
+gene_expression_matrices/
+drug_id_vectors/
