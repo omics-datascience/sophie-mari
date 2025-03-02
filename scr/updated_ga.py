@@ -1,5 +1,6 @@
 from itertools import product
 from typing import cast, Union, Final
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -41,7 +42,7 @@ def __compute_cross_validation(classifier: KNeighborsRegressor, subset: pd.DataF
     for train_index, test_index in skf.split(subset, y):
         # Splits
         x_train_fold, x_test_fold = subset.iloc[train_index], subset.iloc[test_index]
-        y_train_fold, y_test_fold = y[train_index], y[test_index]
+        y_train_fold, y_test_fold = y.iloc[train_index], y.iloc[test_index]
 
         # Creates a cloned instance of the model to store in the list. This HAVE TO be done before fit() because
         # clone() method does not clone the fit_X_ attribute (needed to restore the model during statistical
@@ -116,11 +117,18 @@ def genetic_algorithms(
         cross_validation_folds: int,
         more_is_better: bool
 ) -> FSResult:
-    # Initialize population randomly
-    n_molecules = molecules_df.shape[0]
-    population = np.random.randint(2, size=(population_size, n_molecules))
+    
+    # Set the maximum number of features to select
+    max_selected_features = 30
+    n_molecules = molecules_df.shape[0]  # Total number of features in molecules_df
 
-    fitness_scores = np.empty((population_size, 2))
+    # Initialize population randomly with a boolean array of size n_features
+    population = np.zeros((population_size, n_molecules), dtype=int)
+
+    for i in range(population_size):
+        # Randomly select at most 30 features to be True (selected)
+        selected_features = np.random.choice(n_molecules, size=max_selected_features, replace=False)
+        population[i, selected_features] = 1
 
     for _iteration in range(n_iterations):
         # Calculate fitness scores for each solution
@@ -169,7 +177,7 @@ def genetic_algorithms(
 
 from sklearn.model_selection import train_test_split
 
-def monte_carlo_sample_selection(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2, num_splits: int = 10):
+def monte_carlo_sample_selection(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2, num_splits: int = 100):
     """
     Performs Monte Carlo Cross-Validation to select different training samples for the Genetic Algorithm.
     
@@ -198,13 +206,12 @@ def monte_carlo_sample_selection(X: pd.DataFrame, y: pd.Series, test_size: float
 
 
 if __name__ == '__main__':
-    from data_preprocessing import create_matrix_and_ic50_for_drug, combined_gdsc_df, ccle_data
-
     # Gets the preprocessed data
     print('Loading data')
-    gene_expression_matrix, ic50_vector = create_matrix_and_ic50_for_drug(1, combined_gdsc_df, ccle_data)
-    x_data = gene_expression_matrix
-    y_data = ic50_vector
+    x_data = pd.read_csv('./gene_expression_drug1.csv', index_col=0)
+    y_data = pd.read_csv('./IC50_drug1.csv', index_col=0)
+    y_data = y_data.squeeze()  # Converts (41,1) DataFrame into (41,) Series
+
 
     print("X shape:", x_data.shape)
     print("y shape:", y_data.shape)
@@ -223,6 +230,9 @@ if __name__ == '__main__':
 
     # Monte Carlo Cross-Validation for different train-test splits
     print('\nRunning Monte Carlo Cross-Validation')
+
+    # Define a list to store the selected features from each MCCV split
+    all_selected_features = []
     mc_splits = monte_carlo_sample_selection(X=x_data, y=y_data, test_size=0.2, num_splits=10)
 
     best_mse = float('inf') if not MORE_IS_BETTER else float('-inf')
@@ -247,19 +257,42 @@ if __name__ == '__main__':
 
         # Get the best features, MSE, and model from the genetic algorithm
         selected_features, best_model, best_score = result
+        selected_features, best_model, best_score = result
+        print(f"Split {i+1}: Selected features = {len(selected_features)}, Best model = {best_model}, Best score = {best_score}")
+
 
         print(f"Split {i+1}: Best features selected = {len(selected_features)} | Best MSE = {best_score}")
 
         # Track the best model and features based on MSE
-        if (MORE_IS_BETTER and best_score < best_mse) or (not MORE_IS_BETTER and best_score > best_mse):
+        if  best_score < best_mse:
+            print(f"Checking new MSE: {best_score} vs. current best MSE: {best_mse}")
+
             best_mse = best_score
             best_model = best_model
             best_features = selected_features
+        # Store the selected features from this MCCV iteration
+        all_selected_features.append(selected_features)
 
     print(f"\nBest MSE from MCCV: {best_mse}")
     print(f"Best model: {best_model}")
+    if best_features is None:
+            print("Error: best_features was never assigned.")
+            exit()
     print(f"Best features selected: {len(best_features)}")
 
+    # Aggregate 100 ranked gene list by frequency of selection
+    all_genes = [gene for gene_list in all_selected_features for gene in gene_list]
+
+    # Count the frequency of each gene
+    gene_counts = Counter(all_genes)
+
+    # Convert the count into a pandas DataFrame for easier sorting and visualization
+    gene_frequency_df = pd.DataFrame.from_dict(gene_counts, orient='index', columns=['Frequency'])
+    gene_frequency_df.index.name = 'Gene'
+    gene_frequency_df = gene_frequency_df.sort_values(by='Frequency', ascending=False)
+
+    # Display the ranked genes by frequency
+    print(gene_frequency_df.head())
 
     # Grid search to find the best parameters
     print('\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n')
