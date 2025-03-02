@@ -15,5 +15,5 @@ GDSC2_fitted_dose_response_15Oct19.csv
 scr/__pycache__/data_preprocessing.cpython-312.pyc
 
 # Ignore vectors and matrices
-gene_expression_matrices/
-drug_id_vectors/
+gene_expression_matrices/*
+drug_id_vectors/*
