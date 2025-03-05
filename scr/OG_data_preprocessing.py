@@ -75,6 +75,7 @@ ccle_data['gene_id'] = ccle_data['gene_id'].map(gene_mapping)
 
 # Display the first few rows of the transformed DataFrame
 print("Transformed CCLE data", ccle_data.head())
+print(ccle_data.shape)
 
 # Average duplicates 
 
@@ -84,6 +85,7 @@ averaged_data = ccle_data.groupby('gene_id', as_index=False).mean(numeric_only=T
 
 # Display the first few rows of the resulting DataFrame
 print(averaged_data.head())
+print(averaged_data.shape)
 
 # read GDSC 1
 
@@ -138,14 +140,14 @@ print(f"Number of columns: {num_columns}")
 
 # create data matrix and IC50 vector for each drug
 
-def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
+def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, averaged_data):
     """
     Create gene expression data matrix and IC50 vector for a specific DRUG_ID.
 
     Parameters:
         drug_id (int): The DRUG_ID for which to create the matrix and vector.
         combined_gdsc_df (pd.DataFrame): GDSC dataset with DRUG_ID, CELL_LINE_NAME, and LN_IC50 columns.
-        ccle_data (pd.DataFrame): CCLE dataset with gene expression profiles as rows and cell line columns.
+        averaged_data (pd.DataFrame): CCLE dataset with gene expression profiles as rows and cell line columns.
 
     Returns:
         tuple: (gene_expression_matrix, ic50_vector)
@@ -153,7 +155,7 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
             - ic50_vector (list): Corresponding IC50 values (length N, CCLE).
     """
     # Create mapping from CELL_LINE_ID to CCLE columns
-    ccle_columns = {col.split('_')[0]: col for col in ccle_data.columns if '_' in col}
+    ccle_columns = {col.split('_')[0]: col for col in averaged_data.columns if '_' in col}
 
     # Filter rows for the given DRUG_ID
     drug_data = combined_gdsc_df[combined_gdsc_df['DRUG_ID'] == drug_id]
@@ -169,7 +171,7 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, ccle_data):
             ccle_column_name = ccle_columns[cell_line]
 
             # Append the gene expression profile to the matrix
-            gene_expression_matrix.append(ccle_data[ccle_column_name].values)
+            gene_expression_matrix.append(averaged_data[ccle_column_name].values)
 
             # Append IC50 value for this cell line
             ic50_value = float(drug_data[drug_data['CELL_LINE_NAME'] == cell_line]['LN_IC50'].values[0])
@@ -223,10 +225,12 @@ else:
     print(f"No data available for DRUG_ID {drug_id}.")
 
 print(f"Number of cell lines in gene_expression_matrix: {gene_expression_matrix.shape[1]}")
+print(f"Number of genes in gene_expression_matrix: {gene_expression_matrix.shape[0]}")
 print(f"Length of ic50_vector: {len(ic50_vector)}")
 
 # Export all gene expression matrices and IC50 vectors
 # Define the list of drug IDs
+'''
 drug_ids = [
     1, 3, 5, 6, 9, 11, 17, 29, 30, 32, 34, 35, 37, 38, 41, 45, 51, 52, 53, 54, 55, 
     56, 59, 60, 62, 63, 64, 71, 83, 86, 87, 88, 89, 91, 94, 104, 106, 110, 111, 119, 
@@ -276,6 +280,7 @@ for drug_id in drug_ids:
         print(f"Saved files for DRUG_ID {drug_id}")
     else:
         print(f"No data for DRUG_ID {drug_id}")
+        '''
 
 #Exporting Drug 1 to .csv
 

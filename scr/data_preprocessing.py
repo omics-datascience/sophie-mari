@@ -84,6 +84,7 @@ averaged_data = ccle_data.groupby('gene_id', as_index=False).mean(numeric_only=T
 
 # Display the first few rows of the resulting DataFrame
 print(averaged_data.head())
+print(averaged_data.shape)
 
 # read GDSC 1
 
