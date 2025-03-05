@@ -169,7 +169,8 @@ def genetic_algorithms(
     best_idx = np.argmax(fitness_scores[:, 0]) if more_is_better else np.argmin(fitness_scores[:, 0])
     best_features = population[best_idx]
     best_features = best_features.astype(bool)  # Pandas needs a boolean array to select the rows
-    best_features_str: list[str] = molecules_df.iloc[best_features].index.tolist()
+    selected_feature_indices = np.where(best_features)[0]  # Get indices of selected features
+    best_features_str: list[str] = molecules_df.index[selected_feature_indices].tolist()
 
     best_model = cast(KNeighborsRegressor, fitness_scores[best_idx][1])
     best_mean_score = cast(float, fitness_scores[best_idx][0])
