@@ -1,5 +1,4 @@
-numpy
+#external dependencies
 pandas
-requests
+numpy
 scikit-learn
-deap
