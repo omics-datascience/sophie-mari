@@ -229,6 +229,23 @@ def monte_carlo_sample_selection(X: pd.DataFrame, y: pd.Series, test_size: float
     return mc_splits
 
 
+# Constants
+MORE_IS_BETTER = True  # Set this flag according to your definition
+NUM_SPLITS = 100  # Set number of random splits to 100
+FEATURES_SELECTED = 30  # Number of features to select per split
+
+# Lists to store all predictions for averaging later
+train_predictions = []
+test_predictions = []
+
+# List to store selected features across splits
+all_selected_features = []
+
+# Best performance tracking
+best_mse = float('inf') if not MORE_IS_BETTER else float('-inf')
+best_model = None
+best_features = None
+
 if __name__ == '__main__':
     # Gets the preprocessed data
     print('Loading data')
@@ -236,11 +253,9 @@ if __name__ == '__main__':
     y_data = pd.read_csv('./IC50_drug1.csv', index_col=0)
     y_data = y_data.squeeze()  # Converts (41,1) DataFrame into (41,) Series
 
-
     print("X shape:", x_data.shape)
     print("y shape:", y_data.shape)
 
-    
     # Reports original MSE with all the features
     print('Running fitness function with all the features')
     original_mse_mean = __compute_cross_validation(
@@ -257,117 +272,92 @@ if __name__ == '__main__':
 
     # Define a list to store the selected features from each MCCV split
     all_selected_features = []
-    mc_splits = monte_carlo_sample_selection(X=x_data, y=y_data, test_size=0.2, num_splits=10)
+    mc_splits = monte_carlo_sample_selection(X=x_data, y=y_data, test_size=0.2, num_splits=NUM_SPLITS)
 
-    best_mse = float('inf') if not MORE_IS_BETTER else float('-inf')
-    best_model = None
-    best_features = None
-
+# Update inside the MCCV loop
     for i, (X_train, X_test, y_train, y_test) in enumerate(mc_splits):
         print(f"Running MCCV split {i+1}/{len(mc_splits)}")
         
-        # Run the genetic algorithm for each MCCV split
-        print("Running Genetic Algorithm for current MCCV split")
-        result = genetic_algorithms(
+        # Run the genetic algorithm on the training set
+        print("Running Genetic Algorithm for feature selection")
+        selected_features, trained_knn_model, best_score = genetic_algorithms(
             classifier=KNeighborsRegressor(),
-            molecules_df=X_train,  # Use X_train from the current MCCV split
+            molecules_df=X_train,  # Train set for feature selection
             population_size=10,
             mutation_rate=0.1,
             n_iterations=10,
-            y=y_train,  # Use y_train from the current MCCV split
+            y=y_train,  # Target variable from train set
             cross_validation_folds=5,
             more_is_better=MORE_IS_BETTER
         )
 
-        # Get the best features, MSE, and model from the genetic algorithm
-        selected_features, best_model, best_score = result
-        selected_features, best_model, best_score = result
-        print(f"Split {i+1}: Selected features = {len(selected_features)}, Best model = {best_model}, Best score = {best_score}")
+        print(f"Split {i+1}: Selected {len(selected_features)} features | Best MSE = {best_score}")
+        print(f"Selected features (indices): {selected_features}")
 
+        # If selected_features is empty, print warning
+        if not selected_features:
+            print(f"Warning: No features selected in MCCV split {i+1}")
+            continue  # Skip this MCCV split if no features were selected
 
-        print(f"Split {i+1}: Best features selected = {len(selected_features)} | Best MSE = {best_score}")
-
-        # Track the best model and features based on MSE
-        if  best_score < best_mse:
-            print(f"Checking new MSE: {best_score} vs. current best MSE: {best_mse}")
-
-            best_mse = best_score
-            best_model = best_model
-            best_features = selected_features
-        # Store the selected features from this MCCV iteration
+        # Store selected features from this split
         all_selected_features.append(selected_features)
 
+        # Track best model & feature selection process
+        if best_score < best_mse:
+            print(f"New best model found! MSE improved from {best_mse} → {best_score}")
+            best_mse = best_score
+            best_model = trained_knn_model
+            best_features = selected_features
+
+        # 🔹 Ensure `selected_features` is a flat list if it's nested
+        if isinstance(selected_features[0], list):
+            selected_features = [gene for sublist in selected_features for gene in sublist]
+
+        # 🔹 Convert numerical indices to column names, only if indices are valid
+        selected_features = [
+            X_train.columns[i] for i in selected_features if i < len(X_train.columns)
+        ]
+
+        # 🔹 Ensure only valid columns are selected
+        selected_features = [gene for gene in selected_features if gene in X_train.columns]
+
+        # Ensure features were selected before proceeding
+        if not selected_features:
+            print(f"Skipping model training for MCCV split {i+1} due to no valid selected features.")
+            continue  # Skip this split if no valid features were selected
+
+        X_train_selected = X_train[selected_features]
+        X_test_selected = X_test[selected_features]
+
+        print(f"X_train_selected shape: {X_train_selected.shape}")
+        
+        # Train k-NN (k=3) using only the selected features
+        knn = KNeighborsRegressor(n_neighbors=3)
+        knn.fit(X_train_selected, y_train)
+
+        # Predict IC50 for test set using k=3 nearest neighbors
+        y_pred_test = knn.predict(X_test_selected)
+        print(f"Split {i+1}: Test set predictions computed.")
+
+    # Print final best model details
     print(f"\nBest MSE from MCCV: {best_mse}")
     print(f"Best model: {best_model}")
+
     if best_features is None:
-            print("Error: best_features was never assigned.")
-            exit()
+        print("Error: best_features was never assigned.")
+        exit()
+
     print(f"Best features selected: {len(best_features)}")
 
-    # Aggregate 100 ranked gene list by frequency of selection
+    # Aggregate ranked genes by frequency of selection
     all_genes = [gene for gene_list in all_selected_features for gene in gene_list]
-
-    # Count the frequency of each gene
     gene_counts = Counter(all_genes)
 
-    # Convert the count into a pandas DataFrame for easier sorting and visualization
+    # Convert to DataFrame and sort by selection frequency
     gene_frequency_df = pd.DataFrame.from_dict(gene_counts, orient='index', columns=['Frequency'])
     gene_frequency_df.index.name = 'Gene'
     gene_frequency_df = gene_frequency_df.sort_values(by='Frequency', ascending=False)
 
-    # Display the ranked genes by frequency
+    # Display top-ranked genes
+    print("\nTop selected genes:")
     print(gene_frequency_df.head())
-
-    # Grid search to find the best parameters
-    print('\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n')
-    print('Starting Grid Search')
-    param_grid = {
-        'population_size': [10, 20, 50],
-        'mutation_rate': [0.05, 0.1, 0.2],
-        'n_iterations': [10, 20, 50],
-    }
-
-    best_result = None
-    best_params = None
-    best_score = float('inf') if not MORE_IS_BETTER else float('-inf')
-
-    # Perform grid search
-    for current_population_size, current_mutation_rate, current_n_iterations in product(
-        param_grid['population_size'],
-        param_grid['mutation_rate'],
-        param_grid['n_iterations']
-    ):
-        print(f"Testing parameters: population_size={current_population_size}, "
-              f"mutation_rate={current_mutation_rate}, n_iterations={current_n_iterations}")
-
-        # Run the genetic algorithm with the current set of parameters
-        result = genetic_algorithms(
-            classifier=KNeighborsRegressor(),  # NOTE: you can add some hiper-parameters here in the GridSearch
-            molecules_df=x_data,
-            population_size=current_population_size,
-            mutation_rate=current_mutation_rate,
-            n_iterations=current_n_iterations,
-            y=y_data,
-            cross_validation_folds=5,
-            more_is_better=MORE_IS_BETTER
-        )
-
-        # Extract the score (mean squared error)
-        _, _, mean_score = result
-
-        print(f'Features: {len(result[0])} | MSE: {mean_score}')
-
-        # Update the best parameters and result if the current score is better
-        if (MORE_IS_BETTER and mean_score > best_score) or (not MORE_IS_BETTER and mean_score < best_score):
-            best_score = mean_score
-            best_params = {
-                'population_size': current_population_size,
-                'mutation_rate': current_mutation_rate,
-                'n_iterations': current_n_iterations
-            }
-            best_result = result
-
-    # Output the best parameters and results
-    print("\nGrid Search Complete")
-    print(f"Best Parameters: {best_params}")
-    print(f"Best Features: {len(best_result[0])} | Best MSE: {best_result[2]} | Best Model: {best_result[1]}")
