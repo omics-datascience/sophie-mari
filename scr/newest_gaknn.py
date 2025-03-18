@@ -348,4 +348,4 @@ if __name__ == '__main__':
 
     # Display top-ranked genes
     print("\nTop selected genes:")
-    print(gene_frequency_df.head())
+    print(gene_frequency_df)
