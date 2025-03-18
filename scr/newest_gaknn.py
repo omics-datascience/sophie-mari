@@ -8,6 +8,8 @@ from typing import Union, cast
 from collections import Counter
 from itertools import product
 
+# Set the seed
+np.random.seed(42)
 
 # Result of GA metaheuristic = Tuple of the best features, the best model, and the best mean score
 FSResult = tuple[list[str] | None, KNeighborsRegressor | None, float | None]
@@ -58,8 +60,6 @@ def __compute_cross_validation(classifier: KNeighborsRegressor, subset: pd.DataF
     lst_score_stratified: list[float] = []
     estimators: list[KNeighborsRegressor] = []
 
-    # Makes the rows columns
-    subset = subset.transpose()
 
     for train_index, test_index in skf.split(subset, y):
         # Splits
@@ -115,7 +115,8 @@ def __get_subset_of_features(molecules_df: pd.DataFrame, combination: Union[list
             combination = combination.astype(bool)
 
         # In this case it's a Numpy array with int indexes (used in metaheuristics)
-        subset: pd.DataFrame = molecules_df.iloc[combination]
+        subset: pd.DataFrame = molecules_df.iloc[:, combination]
+
     else:
         # In this case it's a list of columns names (used in Blind Search)
         molecules_to_extract = np.intersect1d(molecules_df.index.tolist(), combination)
@@ -139,7 +140,7 @@ def genetic_algorithms(
 ) -> FSResult:
     
     # Set the maximum number of features to select
-    n_molecules = molecules_df.shape[0]  # Total number of features in molecules_df
+    n_molecules = molecules_df.shape[1]  # Total number of features in molecules_df
 
     # Initialize population randomly with a boolean array of size n_features
     population = np.zeros((population_size, n_molecules), dtype=int)
@@ -150,7 +151,7 @@ def genetic_algorithms(
         population[i, selected_features] = 1
 
     # Perform feature selection on initial population
-    population = feature_selection(population, max_features)
+    population = feature_selection(population, max_features=30, num_features=55765)
 
     for _iteration in range(n_iterations):
         # Calculate fitness scores for each solution
@@ -193,7 +194,7 @@ def genetic_algorithms(
     best_features = population[best_idx]
     best_features = best_features.astype(bool)  # Pandas needs a boolean array to select the rows
     selected_feature_indices = np.where(best_features)[0]  # Get indices of selected features
-    best_features_str: list[str] = molecules_df.index[selected_feature_indices].tolist()
+    best_features_str: list[str] = molecules_df.columns[selected_feature_indices].tolist()
 
     best_model = cast(KNeighborsRegressor, fitness_scores[best_idx][1])
     best_mean_score = cast(float, fitness_scores[best_idx][0])
@@ -218,11 +219,8 @@ def monte_carlo_sample_selection(X: pd.DataFrame, y: pd.Series, test_size: float
     
     for _ in range(num_splits):
         X_train, X_test, y_train, y_test = train_test_split(
-            X.T, y, test_size=test_size
+            X, y, test_size=test_size
         )
-        # Transpose X_train and X_test back to the original shape (features as rows, samples as columns)
-        X_train = X_train.T
-        X_test = X_test.T
 
         mc_splits.append((X_train, X_test, y_train, y_test))
     
@@ -249,12 +247,16 @@ best_features = None
 if __name__ == '__main__':
     # Gets the preprocessed data
     print('Loading data')
-    x_data = pd.read_csv('./gene_expression_drug1.csv', index_col=0)
-    y_data = pd.read_csv('./IC50_drug1.csv', index_col=0)
-    y_data = y_data.squeeze()  # Converts (41,1) DataFrame into (41,) Series
+    x_data = pd.read_csv('./gene_expression_drug1.csv', index_col=0)  # (55765, 41)
+    y_data = pd.read_csv('./IC50_drug1.csv', index_col=0)  # (41, 1)
+    y_data = y_data.squeeze()  # Convert DataFrame (41,1) to Series (41,)
 
-    print("X shape:", x_data.shape)
-    print("y shape:", y_data.shape)
+    # Ensure x_data remains (41, 55765) for proper training
+    x_data = x_data.T  # Transpose so rows become samples and columns become features
+
+    print("X shape:", x_data.shape)  # Should be (41, 55765)
+    print("y shape:", y_data.shape)  # Should be (41,)
+
 
     # Reports original MSE with all the features
     print('Running fitness function with all the features')
@@ -303,28 +305,15 @@ if __name__ == '__main__':
         all_selected_features.append(selected_features)
 
         # Track best model & feature selection process
-        if best_score < best_mse:
+        if best_score > best_mse:
             print(f"New best model found! MSE improved from {best_mse} → {best_score}")
             best_mse = best_score
             best_model = trained_knn_model
             best_features = selected_features
 
-        # 🔹 Ensure `selected_features` is a flat list if it's nested
-        if isinstance(selected_features[0], list):
-            selected_features = [gene for sublist in selected_features for gene in sublist]
-
-        # 🔹 Convert numerical indices to column names, only if indices are valid
-        selected_features = [
-            X_train.columns[i] for i in selected_features if i < len(X_train.columns)
-        ]
-
-        # 🔹 Ensure only valid columns are selected
-        selected_features = [gene for gene in selected_features if gene in X_train.columns]
-
-        # Ensure features were selected before proceeding
-        if not selected_features:
-            print(f"Skipping model training for MCCV split {i+1} due to no valid selected features.")
-            continue  # Skip this split if no valid features were selected
+        print("X_train:", X_train)
+        print("X_train shape:", X_train.shape)
+        print("Selected features:", selected_features)
 
         X_train_selected = X_train[selected_features]
         X_test_selected = X_test[selected_features]
@@ -345,7 +334,6 @@ if __name__ == '__main__':
 
     if best_features is None:
         print("Error: best_features was never assigned.")
-        exit()
 
     print(f"Best features selected: {len(best_features)}")
 
