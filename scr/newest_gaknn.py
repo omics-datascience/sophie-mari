@@ -274,7 +274,7 @@ if __name__ == '__main__':
     all_selected_features = []
     mc_splits = monte_carlo_sample_selection(X=x_data, y=y_data, test_size=0.2, num_splits=NUM_SPLITS)
 
-# Update inside the MCCV loop
+    # MCCV loop
     for i, (X_train, X_test, y_train, y_test) in enumerate(mc_splits):
         print(f"Running MCCV split {i+1}/{len(mc_splits)}")
         
