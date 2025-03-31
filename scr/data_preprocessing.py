@@ -40,41 +40,48 @@ gencode_data = pd.read_csv(gencode_path, compression='gzip', sep='\t', comment='
 
 # Print the head of the dataset
 print("Gencode data head:", gencode_data.head(10))
+print("Gencode data shape:", gencode_data.shape)
 
-# transform ENSENBL IDs into official gene symbols
 
 
-# Read the GTF file (only necessary columns for gene_id and gene_name)
+# Read the GTF file (only necessary columns for gene_id, gene_name, and gene_type)
 with gzip.open(gencode_path, 'rt') as f:
     # Parse only rows containing "gene" and extract the relevant column
     gtf_data = pd.read_csv(f, sep='\t', comment='#', header=None, usecols=[8], names=['attributes'])
 
-# Extract gene_id and gene_name from the attributes column
+# Extract gene_id, gene_name, and gene_type from the attributes column
 def parse_attributes(attributes):
-    """Extract gene_id and gene_name from the attributes string."""
+    """Extract gene_id, gene_name, and gene_type from the attributes string."""
     fields = attributes.split(';')
     gene_id = next((field.split('"')[1] for field in fields if field.strip().startswith("gene_id")), None)
     gene_name = next((field.split('"')[1] for field in fields if field.strip().startswith("gene_name")), None)
-    return gene_id, gene_name
+    gene_type = next((field.split('"')[1] for field in fields if field.strip().startswith("gene_type")), None)
+    return gene_id, gene_name, gene_type
 
-# Apply the parsing function to extract gene_id and gene_name
+# Apply the parsing function
 mapping = gtf_data['attributes'].apply(parse_attributes)
-gene_mapping_df = pd.DataFrame(mapping.tolist(), columns=['gene_id', 'gene_name'])
+gene_mapping_df = pd.DataFrame(mapping.tolist(), columns=['gene_id', 'gene_name', 'gene_type'])
 
-# Create a dictionary for mapping
-gene_mapping = dict(zip(gene_mapping_df['gene_id'], gene_mapping_df['gene_name']))
+# Filter only protein-coding genes
+protein_coding_genes = gene_mapping_df[gene_mapping_df['gene_type'] == 'protein_coding']
+
+# Create a dictionary mapping Ensembl IDs to gene names
+gene_mapping = dict(zip(protein_coding_genes['gene_id'], protein_coding_genes['gene_name']))
+
+print("Length of mapping dictionary:", len(gene_mapping))
 
 # Print the first 10 items of the dictionary
 for i, (key, value) in enumerate(gene_mapping.items()):
     print(f"{key}: {value}")
     if i == 9:  # Stop after printing 10 items
         break
+
 # Replace gene IDs with gene names using the mapping dictionary
 ccle_data['gene_id'] = ccle_data['gene_id'].map(gene_mapping)
 
-
 # Display the first few rows of the transformed DataFrame
 print("Transformed CCLE data", ccle_data.head())
+print("Transformed data CCLE before average:", ccle_data.shape)
 
 # Average duplicates 
 
@@ -83,8 +90,8 @@ print("Transformed CCLE data", ccle_data.head())
 averaged_data = ccle_data.groupby('gene_id', as_index=False).mean(numeric_only=True)
 
 # Display the first few rows of the resulting DataFrame
-print(averaged_data.head())
-print(averaged_data.shape)
+print("Averaged data head:", averaged_data.head())
+print("Averaged data shape:", averaged_data.shape)
 
 # read GDSC 1
 
