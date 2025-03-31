@@ -82,7 +82,7 @@ ccle_data['gene_id'] = ccle_data['gene_id'].map(gene_mapping)
 
 # Display the first few rows of the transformed DataFrame
 print("Transformed CCLE data", ccle_data.head())
-print(ccle_data.shape)
+print("Transformed data CCLE before average:", ccle_data.shape)
 
 # Average duplicates 
 
@@ -193,6 +193,8 @@ def create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, averaged_data):
     # Convert the gene expression matrix to a DataFrame with rows as genes and columns as cell lines
     gene_expression_matrix = pd.DataFrame(gene_expression_matrix).T
     gene_expression_matrix.columns = matching_cell_lines
+    gene_expression_matrix.index = averaged_data.iloc[:, 0].values  # Set first column as index
+
 
     return gene_expression_matrix, ic50_vector
 
@@ -237,7 +239,7 @@ print(f"Length of ic50_vector: {len(ic50_vector)}")
 
 # Export all gene expression matrices and IC50 vectors
 # Define the list of drug IDs
-'''
+
 drug_ids = [
     1, 3, 5, 6, 9, 11, 17, 29, 30, 32, 34, 35, 37, 38, 41, 45, 51, 52, 53, 54, 55, 
     56, 59, 60, 62, 63, 64, 71, 83, 86, 87, 88, 89, 91, 94, 104, 106, 110, 111, 119, 
@@ -274,32 +276,29 @@ drug_ids = [
 ]
 
 # Create directories if they don’t exist
-os.makedirs("gene_expression_matrices", exist_ok=True)
-os.makedirs("drug_id_vectors", exist_ok=True)
+os.makedirs("GENE_EXPR_DIR", exist_ok=True)
+os.makedirs("IC50_DIR", exist_ok=True)
 
 for drug_id in drug_ids:
     gene_expression_matrix, ic50_vector = create_matrix_and_ic50_for_drug(drug_id, combined_gdsc_df, averaged_data)
 
     if gene_expression_matrix is not None:
-        gene_expression_matrix.to_csv(f"gene_expression_matrices/{drug_id}_matrix.csv")
-        pd.Series(ic50_vector).to_csv(f"drug_id_vectors/{drug_id}_vector.csv", index=False)
+        gene_expression_matrix.to_csv(f"GENE_EXPR_DIR/{drug_id}_matrix.csv")
+        pd.Series(ic50_vector).to_csv(f"IC50_DIR/{drug_id}_vector.csv", index=False)
 
         print(f"Saved files for DRUG_ID {drug_id}")
     else:
         print(f"No data for DRUG_ID {drug_id}")
-        '''
 
+'''
 #Exporting Drug 1 to .csv
 
-# Create a DataFrame for the IC50 row with the same columns as the gene expression data
-#ic50_row = pd.Series(ic50_vector, index=gene_expression_matrix.columns)
+# Export matrix to CSV 
+gene_expression_matrix.to_csv('gene_expression_drug1.csv', index=True, header=True)
 
-# Insert IC50 row at the top of the DataFrame
-#gene_expression_matrix.loc['IC50'] = ic50_row  # Adding IC50 row
+# Convert to Pandas Series
+ic50_series = pd.Series(ic50_vector)
 
-# Export to CSV (with IC50 as the first row)
-#gene_expression_matrix.to_csv('gene_expression_and_ic50.csv', index=True, header=True)
-
-# Export to JSON (with IC50 as the first row)
-#gene_expression_matrix.to_json('gene_expression_and_ic50.json', orient='records', lines=True)
-
+# Save as csv
+ic50_series.to_csv('ic50_drug1.csv', index=True, header=True)
+'''
