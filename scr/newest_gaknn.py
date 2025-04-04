@@ -486,7 +486,7 @@ def main():
             print(f"Error processing drug {drug_id}: {str(e)}")
             continue'''
     # Runs model on specific drug (change it to the ID you want to test)
-    drug_id = 1372 
+    drug_id = 1549 
 
     try:
         results = process_drug(drug_id, knn)
