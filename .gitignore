@@ -17,3 +17,8 @@ scr/__pycache__/data_preprocessing.cpython-312.pyc
 # Ignore vectors and matrices
 gene_expression_matrices/*
 drug_id_vectors/*
+
+# Ignore directories
+GENE_EXPR_DIR/
+IC50_DIR/
+results/
