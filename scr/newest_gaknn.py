@@ -209,10 +209,31 @@ def analyze_feature_frequency(feature_lists: List[List[str]], feature_names: pd.
     return freq_df.sort_values('Frequency', ascending=False)
 
 
-# Define the exact paths you're using
-GENE_EXPR_DIR = "/Users/marianajannotti/Documents/GitHub/sophie-mari/GENE_EXPR_DIR"
-IC50_DIR = "/Users/marianajannotti/Documents/GitHub/sophie-mari/IC50_DIR"
-RESULTS_DIR = "/Users/marianajannotti/Documents/GitHub/sophie-mari/results"
+# Automatically set project root, so that we can both run the code and save results in sophie-mari
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+GDSC_CSV_PATH = PROJECT_ROOT / "datasets" / "combined_gdsc.csv"
+
+try:
+    gdsc_df = pd.read_csv(GDSC_CSV_PATH)
+    drug_id_to_name = (
+        pd.Series(gdsc_df["DRUG_NAME"].values, index=gdsc_df["DRUG_ID"])
+        .dropna()
+        .to_dict()
+    )
+    print(f"✅ Loaded drug name dictionary with {len(drug_id_to_name)} entries")
+except Exception as e:
+    print(f"⚠️ Could not load drug ID to name mapping: {e}")
+    drug_id_to_name = {}
+
+
+GENE_EXPR_DIR = PROJECT_ROOT / "GENE_EXPR_DIR"
+IC50_DIR = PROJECT_ROOT / "IC50_DIR"
+RESULTS_DIR = PROJECT_ROOT / "results"
+
+# Old code for defining the exact paths for saving
+'''GENE_EXPR_DIR = "/Users/sophiaboler/Desktop/sophie-mari/GENE_EXPR_DIR"
+IC50_DIR = "/Users/sophiaboler/Desktop/sophie-mari/IC50_DIR"
+RESULTS_DIR = "/Users/sophiaboler/Desktop/sophie-mari/results"'''
 
 # Create results directory if it doesn't exist
 Path(RESULTS_DIR).mkdir(parents=True, exist_ok=True)
@@ -236,9 +257,18 @@ def load_drug_data(drug_id: int) -> Tuple[pd.DataFrame, pd.Series]:
     
     try:
         X = pd.read_csv(gene_path, index_col=0).T  # Genes as columns
-        y = pd.read_csv(ic50_path, header=None)
+        y = pd.read_csv(ic50_path, header=None, skiprows=1).squeeze() #all ic50 vectors have 0 header
         
-        # Diagnostic output with labels
+        # Diagnostic output (cleaner now that we skip the header by default)
+        print(f"\n=== Checking file: {ic50_path} ===")
+        print(f"✅ Loaded IC50 values: {len(y)}")
+        print(f"✅ Gene matrix samples: {X.shape[0]}")
+        
+        if len(y) != X.shape[0]:
+            print("❌ Mismatch between IC50 values and gene expression samples!")
+            return None, None
+
+        '''# Diagnostic output with labels
         print(f"\n=== Checking file: {ic50_path} ===")
         print("First two lines of IC50 file:")
         with open(ic50_path) as f:  # Use the path string directly
@@ -254,7 +284,7 @@ def load_drug_data(drug_id: int) -> Tuple[pd.DataFrame, pd.Series]:
             print("\n⚠️ Warning: Off-by-one mismatch detected (likely header row)")
             print("Attempting automatic correction...")
             y = pd.read_csv(ic50_path, header=None, skiprows=1).squeeze()
-            print(f"New IC50 count: {len(y)} (should now match {X.shape[0]})")
+            print(f"New IC50 count: {len(y)} (should now match {X.shape[0]})")'''
             
         return X, y
     except Exception as e:
@@ -267,8 +297,8 @@ def process_drug(drug_id: int, model: KNeighborsRegressor) -> Dict:
     X, y = load_drug_data(drug_id)
     if X is None or y is None:
         return None
-    
-    print(f"\nProcessing drug {drug_id} with {X.shape[1]} genes and {len(y)} samples")
+    drug_name = drug_id_to_name.get(drug_id, "Unknown Drug")
+    print(f"\nProcessing drug {drug_id} ({drug_name}) with {X.shape[1]} genes and {len(y)} samples")
     
     # Store all results for this drug
     drug_results = {
@@ -300,16 +330,17 @@ def process_drug(drug_id: int, model: KNeighborsRegressor) -> Dict:
         # Predict on test set
         X_test_selected = X_test[features]
         y_pred = knn_model.predict(X_test_selected)
-        
-        # Store results
+
+        # Store predictions + actuals together
         drug_results['selected_features'].append(features)
-        drug_results['predictions'].append(y_pred)
+        drug_results['predictions'].append((y_pred, y_test.values))  # <-- tuple
         drug_results['models'].append(knn_model)
+
     
     return drug_results
 
 
-def save_drug_results(drug_id: int, results: Dict):
+'''def save_drug_results(drug_id: int, results: Dict):
     """Save all results for a drug in an organized structure."""
     drug_dir = os.path.join(RESULTS_DIR, str(drug_id))
     os.makedirs(drug_dir, exist_ok=True)
@@ -340,7 +371,66 @@ def save_drug_results(drug_id: int, results: Dict):
     ).sort_values('count', ascending=False)
     freq_df.to_csv(os.path.join(drug_dir, "feature_frequencies.csv"))
     
-    print(f"Saved results for drug {drug_id} in {drug_dir}")
+    print(f"Saved results for drug {drug_id} in {drug_dir}")'''
+
+def save_drug_results(drug_id: int, results: Dict):
+    """Save all results for a drug in an organized structure, with debug checks."""
+    drug_dir = Path(RESULTS_DIR) / str(drug_id)
+    drug_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"Saving results for drug {drug_id} to {drug_dir}")
+
+    try:
+        features_df = pd.DataFrame(results['selected_features']).T
+        print("✅ features_df shape:", features_df.shape)
+        features_df.to_csv(drug_dir / "selected_features.csv")
+    except Exception as e:
+        print(f"❌ Error saving selected_features.csv: {e}")
+
+    try:
+        # Unpack the (y_pred, y_test) tuples
+        pred_arrays = []
+        actual_arrays = []
+
+        for y_pred, y_test in results['predictions']:
+            pred_arrays.append(y_pred)
+            actual_arrays.append(y_test)
+
+        preds_df = pd.DataFrame(pred_arrays).T
+        actuals_df = pd.DataFrame(actual_arrays).T
+
+        print("✅ preds_df shape:", preds_df.shape)
+        print("✅ actuals_df shape:", actuals_df.shape)
+
+        preds_df.to_csv(drug_dir / "predictions.csv", index=False)
+        actuals_df.to_csv(drug_dir / "actuals.csv", index=False)
+    except Exception as e:
+        print(f"❌ Error saving predictions or actuals: {e}")
+
+    try:
+        mean_preds = preds_df.mean(axis=1)
+        mean_actuals = actuals_df.mean(axis=1)  # Optional averaging for final view
+
+        final_df = pd.DataFrame({
+            'actual': mean_actuals,
+            'predicted': mean_preds
+        })
+        print("✅ final_df shape:", final_df.shape)
+        final_df.to_csv(drug_dir / "final_predictions.csv", index=False)
+    except Exception as e:
+        print(f"❌ Error saving final_predictions.csv: {e}")
+
+    try:
+        feature_counts = Counter([
+            f for sublist in results['selected_features'] for f in sublist
+        ])
+        freq_df = pd.DataFrame.from_dict(
+            feature_counts, orient='index', columns=['count']
+        ).sort_values('count', ascending=False)
+        print("✅ freq_df shape:", freq_df.shape)
+        freq_df.to_csv(drug_dir / "feature_frequencies.csv")
+    except Exception as e:
+        print(f"❌ Error saving feature_frequencies.csv: {e}")
 
 
 def main():
@@ -387,14 +477,25 @@ def main():
     ]
     
     # Process each drug
-    for drug_id in drug_ids:
+    '''for drug_id in drug_ids:
         try:
             results = process_drug(drug_id, knn)
             if results:
                 save_drug_results(drug_id, results)
         except Exception as e:
             print(f"Error processing drug {drug_id}: {str(e)}")
-            continue
+            continue'''
+    # Runs model on specific drug (change it to the ID you want to test)
+    drug_id = 1372 
+
+    try:
+        results = process_drug(drug_id, knn)
+        if results:
+            print(f"Saving results for drug {drug_id}")
+            save_drug_results(drug_id, results)
+    except Exception as e:
+        print(f"Error processing drug {drug_id}: {str(e)}")
+    
 
 
 if __name__ == '__main__':

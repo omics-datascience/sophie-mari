@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import gzip
 import numpy as np
+from pathlib import Path
 
 # CCLE has the gene expression
 
@@ -142,6 +143,16 @@ num_rows, num_columns = combined_gdsc_df.shape
 print(f"Number of rows: {num_rows}")
 print(f"Number of columns: {num_columns}")
 
+# ✅ Save combined GDSC as CSV (if it doesn't already exist)
+project_root = Path(__file__).resolve().parent.parent
+csv_path = project_root / "datasets" / "combined_gdsc.csv"
+
+if not csv_path.exists():
+    combined_gdsc_df.to_csv(csv_path, index=False)
+    print(f"✅ Saved combined GDSC dataset to: {csv_path}")
+else:
+    print(f"ℹ️ combined_gdsc.csv already exists — skipping save.")
+    
 
 # create data matrix and IC50 vector for each drug
 
