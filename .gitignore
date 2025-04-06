@@ -1,6 +1,7 @@
 # System and IDE files
 .DS_Store
 .idea/
+gaknn-env/
 
 # Python artifacts
 __pycache__/
@@ -26,8 +27,9 @@ datasets_OG/GDSC2_fitted_dose_response_15Oct19.csv
 GENE_EXPR_DIR/
 IC50_DIR/
 results/
+old_results/
 gene_expression_matrices/
 drug_id_vectors/
 
 # Python/Conda environment files
-.python-version
+.python-versionpredictable_drugs.csv

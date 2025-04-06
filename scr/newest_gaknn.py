@@ -161,6 +161,14 @@ def genetic_algorithm(
     
     best_mask, best_model, best_score = best_solution
     feature_names = X.columns[best_mask].tolist()
+
+    # Debug check: Make sure all features exist in X
+    for f in feature_names:
+        if f not in X.columns:
+            print(f"❌ Feature not in X.columns: {f}")
+            print("Available columns sample:", X.columns[:10].tolist())
+            raise ValueError(f"Feature {f} not found in X.columns")
+    
     return feature_names, best_model, best_score
 
 
@@ -257,42 +265,124 @@ def load_drug_data(drug_id: int) -> Tuple[pd.DataFrame, pd.Series]:
     
     try:
         X = pd.read_csv(gene_path, index_col=0).T  # Genes as columns
-        y = pd.read_csv(ic50_path, header=None, skiprows=1).squeeze() #all ic50 vectors have 0 header
-        
-        # Diagnostic output (cleaner now that we skip the header by default)
-        print(f"\n=== Checking file: {ic50_path} ===")
-        print(f"✅ Loaded IC50 values: {len(y)}")
-        print(f"✅ Gene matrix samples: {X.shape[0]}")
-        
+        y = pd.read_csv(ic50_path, header=None, skiprows=1).squeeze()
+
+        # Align the indices
         if len(y) != X.shape[0]:
             print("❌ Mismatch between IC50 values and gene expression samples!")
             return None, None
 
-        '''# Diagnostic output with labels
-        print(f"\n=== Checking file: {ic50_path} ===")
-        print("First two lines of IC50 file:")
-        with open(ic50_path) as f:  # Use the path string directly
-            print("Line 1 (header?):", repr(f.readline()))  # repr() shows hidden characters
-            print("Line 2 (1st value):", repr(f.readline()))
-        
-        # Dimension check
-        print(f"\nShape check:")
-        print(f"Gene matrix samples: {X.shape[0]}")
-        print(f"IC50 values: {len(y)}")
-        
-        if len(y) == X.shape[0] + 1:
-            print("\n⚠️ Warning: Off-by-one mismatch detected (likely header row)")
-            print("Attempting automatic correction...")
-            y = pd.read_csv(ic50_path, header=None, skiprows=1).squeeze()
-            print(f"New IC50 count: {len(y)} (should now match {X.shape[0]})")'''
-            
+        y.index = X.index  # ✅ Make sure they match
+
+        # Z-score normalization (per sample)
+        X = X.sub(X.mean(axis=1), axis=0).div(X.std(axis=1), axis=0)
+
+        # Sanity check
+        print("🔍 Mean across genes per sample (should be ~0):")
+        print(X.mean(axis=1).round(4).head())
+        print("🔍 Std across genes per sample (should be ~1):")
+        print(X.std(axis=1).round(4).head())
+
         return X, y
+    
     except Exception as e:
         print(f"❌ Error loading drug {drug_id}: {str(e)}")
         return None, None
 
-
 def process_drug(drug_id: int, model: KNeighborsRegressor) -> Dict:
+    """Process a single drug through the full GA/KNN pipeline."""
+    X, y = load_drug_data(drug_id)
+    if X is None or y is None:
+        return None
+    
+    drug_name = drug_id_to_name.get(drug_id, "Unknown Drug")
+    print(f"\nProcessing drug {drug_id} ({drug_name}) with {X.shape[1]} genes and {len(y)} samples")
+
+    # Initialize storage for results
+    selected_features_all = []
+    test_preds_by_sample = defaultdict(list)
+    test_actuals_by_sample = defaultdict(list)
+
+    for split in tqdm(range(NUM_SPLITS), desc=f"Drug {drug_id}"):
+        # Split into training and testing sets
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.1, random_state=split
+        )
+
+        # Feature selection via GA on training set
+        features, knn_model, _ = genetic_algorithm(
+            model=model,
+            X=X_train,
+            y=y_train,
+            population_size=POPULATION_SIZE,
+            mutation_rate=MUTATION_RATE,
+            n_iterations=N_ITERATIONS,
+            max_features=MAX_FEATURES,
+            more_is_better=MORE_IS_BETTER
+        )
+        selected_features_all.append(features)
+
+        # Predict IC50 for test set using selected features
+        X_test_selected = X_test[features]
+        y_pred = knn_model.predict(X_test_selected)
+
+        # Store predictions by sample name (index in X)
+        for i, sample_name in enumerate(X_test.index):
+            test_preds_by_sample[sample_name].append(y_pred[i])
+            test_actuals_by_sample[sample_name].append(y_test.loc[sample_name])
+
+    return {
+        "drug_id": drug_id,
+        "selected_features": selected_features_all,
+        "predictions_by_sample": test_preds_by_sample,
+        "actuals_by_sample": test_actuals_by_sample
+    }
+
+def save_drug_results(drug_id: int, results: Dict):
+    drug_dir = Path(RESULTS_DIR) / str(drug_id)
+    drug_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Saving results for drug {drug_id} to {drug_dir}")
+
+    try:
+        # Save selected features (100 lists of 30)
+        features_df = pd.DataFrame(results['selected_features']).T
+        features_df.to_csv(drug_dir / "selected_features.csv", index=False)
+        print("✅ Saved selected_features.csv")
+    except Exception as e:
+        print(f"❌ Error saving selected_features.csv: {e}")
+
+    try:
+        # Convert defaultdicts to DataFrames
+        preds_df = pd.DataFrame.from_dict(results["predictions_by_sample"], orient="index").T
+        actuals_df = pd.DataFrame.from_dict(results["actuals_by_sample"], orient="index").T
+
+        preds_df.to_csv(drug_dir / "predictions.csv", index=False)
+        actuals_df.to_csv(drug_dir / "actuals.csv", index=False)
+        print("✅ Saved predictions.csv and actuals.csv")
+
+        # Final averaged predictions
+        final_preds = preds_df.mean(axis=0)
+        final_actuals = actuals_df.mean(axis=0)
+
+        final_df = pd.DataFrame({
+            "actual": final_actuals,
+            "predicted": final_preds
+        })
+        final_df.to_csv(drug_dir / "final_predictions.csv")
+        print("✅ Saved final_predictions.csv")
+
+    except Exception as e:
+        print(f"❌ Error saving prediction data: {e}")
+
+    try:
+        feature_counts = Counter(f for sublist in results['selected_features'] for f in sublist)
+        freq_df = pd.DataFrame.from_dict(feature_counts, orient='index', columns=['count']).sort_values('count', ascending=False)
+        freq_df.to_csv(drug_dir / "feature_frequencies.csv")
+        print("✅ Saved feature_frequencies.csv")
+    except Exception as e:
+        print(f"❌ Error saving feature frequencies: {e}")
+
+'''def process_drug(drug_id: int, model: KNeighborsRegressor) -> Dict:
     """Process a single drug through the full pipeline."""
     X, y = load_drug_data(drug_id)
     if X is None or y is None:
@@ -339,39 +429,6 @@ def process_drug(drug_id: int, model: KNeighborsRegressor) -> Dict:
     
     return drug_results
 
-
-'''def save_drug_results(drug_id: int, results: Dict):
-    """Save all results for a drug in an organized structure."""
-    drug_dir = os.path.join(RESULTS_DIR, str(drug_id))
-    os.makedirs(drug_dir, exist_ok=True)
-    
-    # 1. Save selected features
-    features_df = pd.DataFrame(results['selected_features']).T
-    features_df.to_csv(os.path.join(drug_dir, "selected_features.csv"))
-    
-    # 2. Save predictions (each split as a column)
-    preds_df = pd.DataFrame(results['predictions']).T
-    preds_df['actual'] = results['actual_values']
-    preds_df.to_csv(os.path.join(drug_dir, "predictions.csv"))
-    
-    # 3. Save aggregated predictions (mean across all splits)
-    mean_preds = np.mean(results['predictions'], axis=0)
-    final_df = pd.DataFrame({
-        'actual': results['actual_values'],
-        'predicted': mean_preds
-    })
-    final_df.to_csv(os.path.join(drug_dir, "final_predictions.csv"))
-    
-    # 4. Save feature frequencies
-    feature_counts = Counter([
-        f for sublist in results['selected_features'] for f in sublist
-    ])
-    freq_df = pd.DataFrame.from_dict(
-        feature_counts, orient='index', columns=['count']
-    ).sort_values('count', ascending=False)
-    freq_df.to_csv(os.path.join(drug_dir, "feature_frequencies.csv"))
-    
-    print(f"Saved results for drug {drug_id} in {drug_dir}")'''
 
 def save_drug_results(drug_id: int, results: Dict):
     """Save all results for a drug in an organized structure, with debug checks."""
@@ -430,7 +487,7 @@ def save_drug_results(drug_id: int, results: Dict):
         print("✅ freq_df shape:", freq_df.shape)
         freq_df.to_csv(drug_dir / "feature_frequencies.csv")
     except Exception as e:
-        print(f"❌ Error saving feature_frequencies.csv: {e}")
+        print(f"❌ Error saving feature_frequencies.csv: {e}")'''
 
 def is_drug_already_processed(drug_id: int) -> bool:
     """Check if results for a drug already exist."""
@@ -480,7 +537,7 @@ def main():
         2107, 2109, 2110, 2111, 2169, 2170, 2171, 2172
     ]
     
-    # Process each drug
+    '''# Process each drug
     for drug_id in drug_ids:
         if is_drug_already_processed(drug_id):
             print(f"⏩ Skipping drug {drug_id} (results already exist)")
@@ -493,10 +550,10 @@ def main():
                 save_drug_results(drug_id, results)
         except Exception as e:
             print(f"❌ Error processing drug {drug_id}: {e}")
-            continue
+            continue'''
 
-    '''# Runs model on specific drug (change it to the ID you want to test)
-    drug_id = 6 
+    # Runs model on specific drug (change it to the ID you want to test)
+    drug_id = 1549 
 
     try:
         results = process_drug(drug_id, knn)
@@ -504,7 +561,7 @@ def main():
             print(f"Saving results for drug {drug_id}")
             save_drug_results(drug_id, results)
     except Exception as e:
-        print(f"Error processing drug {drug_id}: {str(e)}")'''
+        print(f"Error processing drug {drug_id}: {str(e)}")
     
 
 
