@@ -33,3 +33,4 @@ drug_id_vectors/
 
 # Python/Conda environment files
 .python-versionpredictable_drugs.csv
+.python-version
