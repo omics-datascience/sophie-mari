@@ -11,6 +11,9 @@ from pathlib import Path
 # File path
 folder = "./datasets/"
 ccle_path = os.path.join(folder, "CCLE_RNAseq_rsem_genes_tpm_20180929.txt.gz")
+# Define the save path for processed CCLE data
+ccle_save_path = Path("datasets") / "ccle.txt"
+ccle_save_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure 'datasets/' exists
 
 
 if not os.path.exists(ccle_path):
@@ -94,6 +97,16 @@ averaged_data = ccle_data.groupby('gene_id', as_index=False).mean(numeric_only=T
 print("Averaged data head:", averaged_data.head())
 print("Averaged data shape:", averaged_data.shape)
 
+# Final save: ensure gene_id is index and write cleanly
+ccle_output_path = Path("datasets") / "ccle.txt"
+if not ccle_output_path.exists():
+    print("🔄 Saving clean CCLE file...")
+    averaged_data.set_index("gene_id", inplace=True)
+    averaged_data.to_csv(ccle_output_path, sep='\t')
+    print(f"✅ Saved processed CCLE data to: {ccle_output_path}")
+else:
+    print(f"ℹ️ {ccle_output_path.name} already exists — skipping save.")
+
 # read GDSC 1
 
 # File path
@@ -152,7 +165,7 @@ if not csv_path.exists():
     print(f"✅ Saved combined GDSC dataset to: {csv_path}")
 else:
     print(f"ℹ️ combined_gdsc.csv already exists — skipping save.")
-    
+
 
 # create data matrix and IC50 vector for each drug
 

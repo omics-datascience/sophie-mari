@@ -432,6 +432,10 @@ def save_drug_results(drug_id: int, results: Dict):
     except Exception as e:
         print(f"❌ Error saving feature_frequencies.csv: {e}")
 
+def is_drug_already_processed(drug_id: int) -> bool:
+    """Check if results for a drug already exist."""
+    expected_file = RESULTS_DIR / str(drug_id) / "final_predictions.csv"
+    return expected_file.exists()
 
 def main():
     # Initialize model
@@ -477,16 +481,22 @@ def main():
     ]
     
     # Process each drug
-    '''for drug_id in drug_ids:
+    for drug_id in drug_ids:
+        if is_drug_already_processed(drug_id):
+            print(f"⏩ Skipping drug {drug_id} (results already exist)")
+            continue
+
         try:
             results = process_drug(drug_id, knn)
             if results:
+                print(f"Saving results for drug {drug_id}")
                 save_drug_results(drug_id, results)
         except Exception as e:
-            print(f"Error processing drug {drug_id}: {str(e)}")
-            continue'''
-    # Runs model on specific drug (change it to the ID you want to test)
-    drug_id = 1549 
+            print(f"❌ Error processing drug {drug_id}: {e}")
+            continue
+
+    '''# Runs model on specific drug (change it to the ID you want to test)
+    drug_id = 6 
 
     try:
         results = process_drug(drug_id, knn)
@@ -494,7 +504,7 @@ def main():
             print(f"Saving results for drug {drug_id}")
             save_drug_results(drug_id, results)
     except Exception as e:
-        print(f"Error processing drug {drug_id}: {str(e)}")
+        print(f"Error processing drug {drug_id}: {str(e)}")'''
     
 
 
