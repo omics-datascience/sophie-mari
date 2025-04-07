@@ -2,9 +2,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-drug_id = "1372"  # change to whichever drug you want to check
-# Get absolute path to results directory relative to this script
-base_dir = Path(__file__).resolve().parent
+drug_id = "1372"  # ← change this to whichever drug you want to check
+
+# Navigate to results directory: up one level from quick_scr
+base_dir = Path(__file__).resolve().parent.parent  # now points to sophie-mari/
 results_dir = base_dir / "results" / drug_id
 
 # Load prediction and actual CSVs
