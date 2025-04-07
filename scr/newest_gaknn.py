@@ -553,7 +553,7 @@ def main():
             continue'''
 
     # Runs model on specific drug (change it to the ID you want to test)
-    drug_id = 1549 
+    drug_id = 1047 
 
     try:
         results = process_drug(drug_id, knn)

@@ -8,7 +8,7 @@ gdsc_path = project_root / "datasets" / "combined_gdsc.csv"
 df = pd.read_csv(gdsc_path)
 
 # Find drug IDs that match a drug name
-search_name = "Sapitinib"  # ← change this to drug name
+search_name = "Dabrafenib"  # ← change this to drug name
 
 # Case-insensitive match
 matches = df[df["DRUG_NAME"].str.lower() == search_name.lower()]["DRUG_ID"].unique()
